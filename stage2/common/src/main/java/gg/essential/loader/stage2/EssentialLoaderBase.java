@@ -418,7 +418,7 @@ public abstract class EssentialLoaderBase {
             throw new AssertionError("JVM should have exited by now");
         }
 
-        this.addToClasspath(mod, currentMeta, essentialFile, this.extractJarsInJar(mod, essentialFile));
+        this.addToClasspath(mod, currentMeta, essentialFile);
 
         return currentMeta;
     }
@@ -739,6 +739,10 @@ public abstract class EssentialLoaderBase {
 
     @Nullable
     protected abstract ClassLoader getModClassLoader();
+
+    protected void addToClasspath(Mod mod, ModJarMetadata jarMeta, Path jar) throws IOException {
+        this.addToClasspath(mod, jarMeta, jar, this.extractJarsInJar(mod, jar));
+    }
 
     protected void addToClasspath(Mod mod, ModJarMetadata jarMeta, Path mainJar, final List<Path> innerJars) {
         this.addToClasspath(mainJar);

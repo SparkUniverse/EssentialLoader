@@ -1,0 +1,9 @@
+dependencies {
+    compileOnly("net.neoforged.fancymodloader:loader:10.0.32")
+}
+
+jar {
+    from(evaluationDependsOn(":stage2:fml10").tasks.named("jar").map { it.archiveFile }) {
+        rename { "gg/essential/loader/stage1/stage2.jar" }
+    }
+}

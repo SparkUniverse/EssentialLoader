@@ -4,11 +4,12 @@ Unlike regular mods, essential-loader is subdivided in general not by Minecraft 
 This is because Essential Loader does not by itself interact with Minecraft in any way.
 But it does heavily interact with the host mod loader to dynamically load the mods it just downloaded / updated.
 
-Currently there are four different platform:
+Currently there are five different platform:
 - LaunchWrapper (Forge 1.8.9 and 1.12.2)
 - Fabric (1.16+ with Fabric Loader)
 - ModLauncher 8 (Forge 1.16.5)
-- ModLauncher 9 (Forge 1.17 and above; also supports ModLauncher 10)
+- ModLauncher 9 (Forge 1.17 and above; also supports ModLauncher 10+ and NeoForge)
+- FancyModLoader 10 (NeoForge 1.21.11 and above)
 
 ## LaunchWrapper
 
@@ -310,4 +311,17 @@ KotlinForForge jar because it's just been exploded into there, all metadata lost
 from some random file it has and the stdlib version by loading the stdlib `KotlinVersion` class in a temporary class
 loader, and then just take a good guess at the serialization version, and it all just about works out good enough.
 
+## FancyModLoader 10
 
+FancyModLoader 10 is used by NeoForge 1.21.11.
+It is superficially quite similar to ModLauncher in that it provides many of the same NeoForge-specific service loader
+interfaces, but drops all the ModLauncher-specific ones.
+
+### Entrypoint
+
+We implement an `IModFileCandidateLocator` as our entrypoint.
+
+### Hacks
+
+Presently no hacks are required on this platform.
+The downloaded Essential jar is simply added to the discovery pipeline via its regular API.
