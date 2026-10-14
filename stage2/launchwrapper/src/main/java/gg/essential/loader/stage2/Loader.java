@@ -7,6 +7,7 @@ import com.google.gson.JsonObject;
 import com.google.gson.JsonPrimitive;
 import gg.essential.loader.stage2.relaunch.Relaunch;
 import gg.essential.loader.stage2.util.MixinExtrasExtractor;
+import gg.essential.loader.stage2.util.SelfUpdateHelper;
 import net.minecraft.launchwrapper.ITweaker;
 import net.minecraft.launchwrapper.Launch;
 import org.apache.logging.log4j.LogManager;
@@ -18,7 +19,6 @@ import java.io.IOException;
 import java.io.InputStream;
 import java.net.MalformedURLException;
 import java.net.URI;
-import java.net.URISyntaxException;
 import java.net.URL;
 import java.net.URLClassLoader;
 import java.nio.file.FileSystem;
@@ -26,7 +26,6 @@ import java.nio.file.FileSystems;
 import java.nio.file.Files;
 import java.nio.file.InvalidPathException;
 import java.nio.file.Path;
-import java.nio.file.Paths;
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.Comparator;
@@ -38,13 +37,15 @@ import java.util.List;
 import java.util.Map;
 import java.util.Objects;
 import java.util.Set;
-import java.util.function.Consumer;
 import java.util.function.Supplier;
 import java.util.jar.Attributes;
 import java.util.jar.JarInputStream;
 import java.util.jar.Manifest;
 import java.util.stream.Collectors;
 
+import static gg.essential.loader.stage2.util.SelfUpdateHelper.LOADED_STAGE2_VERSION;
+import static gg.essential.loader.stage2.util.SelfUpdateHelper.STAGE1_RESOURCE;
+import static gg.essential.loader.stage2.util.SelfUpdateHelper.STAGE2_PKG;
 import static gg.essential.loader.stage2.util.VersionComparison.compareVersions;
 import static java.nio.file.StandardCopyOption.REPLACE_EXISTING;
 
@@ -54,29 +55,9 @@ public class Loader {
 
     private static final String ESSENTIAL_MOD_JSON = "essential.mod.json";
 
-    private static final String STAGE1_RESOURCE = "gg/essential/loader/stage0/stage1.jar";
-    private static final String STAGE2_RESOURCE = "gg/essential/loader/stage1/stage2.jar";
-
-    private static final String STAGE1_PKG = "gg.essential.loader.stage1.";
-    private static final String STAGE1_PKG_PATH = STAGE1_PKG.replace('.', '/');
-
-    private static final String STAGE2_PKG = "gg.essential.loader.stage2.";
-    private static final String STAGE2_PKG_PATH = STAGE2_PKG.replace('.', '/');
     private static final String STAGE2_CLS = STAGE2_PKG + "EssentialSetupTweaker";
 
-    private static final String LOADED_STAGE2_VERSION;
-
     static {
-        // Note: Cannot just use `Loader.class.getPackage().getImplementationVersion()` because LaunchWrapper does not
-        //       properly handle packages, we'll just get a dummy package with `null` version.
-        Path loadedPath;
-        try {
-            loadedPath = Paths.get(Loader.class.getProtectionDomain().getCodeSource().getLocation().toURI());
-        } catch (URISyntaxException e) {
-            throw new RuntimeException(e);
-        }
-        LOADED_STAGE2_VERSION = readStage2Version(loadedPath);
-
         LOGGER.info("Running Essential Loader v{}", LOADED_STAGE2_VERSION);
         System.setProperty("essential.stage2.version", LOADED_STAGE2_VERSION);
     }
@@ -85,13 +66,12 @@ public class Loader {
         .toPath()
         .toAbsolutePath();
 
-    /** Path to a more recent loader jar file if one was found during discovery. */
-    private Path newerLoaderJar;
-    private String latestLoaderJarVersion = LOADED_STAGE2_VERSION;
+    private final SelfUpdateHelper selfUpdateHelper = new SelfUpdateHelper();
 
     public void loadAndRelaunch() {
         List<JarInfo> jars = load(Launch.classLoader.getSources());
 
+        Path newerLoaderJar = selfUpdateHelper.newerLoaderJar();;
         if (newerLoaderJar != null) {
             relaunchViaNewerLoader(newerLoaderJar);
         }
@@ -171,7 +151,7 @@ public class Loader {
             jars.add(essentialJarInfo);
         }
 
-        if (newerLoaderJar == null) {
+        if (selfUpdateHelper.newerLoaderJar() == null) {
             Set<String> visited = new HashSet<>();
             StringBuilder sb = new StringBuilder();
             for (JarInfo jar : topLevel) {
@@ -222,7 +202,7 @@ public class Loader {
             Path stage1Path = fileSystem.getPath(STAGE1_RESOURCE);
             if (Files.exists(stage1Path)) {
                 hasStage1 = true;
-                checkForNewerLoaderInStage1(stage1Path);
+                selfUpdateHelper.checkForNewerLoaderInStage1(stage1Path);
             }
 
             embeddedMixinExtrasVersion = MixinExtrasExtractor.readMixinExtrasVersion(jar, fileSystem);
@@ -289,7 +269,7 @@ public class Loader {
             // Unsupported schema revision
             // If we have a newer loader jar queued, that likely supports the newer revision, so let's not complain now.
             // If we don't though, then let's print a warning about it.
-            if (newerLoaderJar == null) {
+            if (selfUpdateHelper.newerLoaderJar() == null) {
                 LOGGER.warn("Unsupported schema revision `{}` in `{}`. ", schemaRevision, jar);
             }
             return null;
@@ -390,81 +370,8 @@ public class Loader {
         // If we have a newer loader jar queued, it might just be that this version of the loader doesn't yet support
         // the spec, so let's not complain.
         // If we don't though, then the spec is probably wrong, so let's print a warning about it.
-        if (newerLoaderJar == null) {
+        if (selfUpdateHelper.newerLoaderJar() == null) {
             LOGGER.warn("Unsupported jar specification `{}` containing neither `file` nor `class` found in `{}`. ", spec, outerJar.path);
-        }
-    }
-
-    private int latestStage1Version;
-    private void checkForNewerLoaderInStage1(Path stage1Jar) throws IOException {
-        int stage1Version = readStage1Version(stage1Jar);
-        if (stage1Version <= latestStage1Version) {
-            return; // stage1 jar is older than what we've previously tried, not even worth looking at embedded stage2
-        }
-        latestStage1Version = stage1Version;
-
-        // ZipFileSystem doesn't support nested jars, so we need to extract it to a temporary file
-        Path tmpStage1Jar = Files.createTempFile("essential-loader-stage1-", ".jar");
-        try {
-            Files.copy(stage1Jar, tmpStage1Jar, REPLACE_EXISTING);
-
-            try (FileSystem fileSystem = FileSystems.newFileSystem(tmpStage1Jar, (ClassLoader) null)) {
-                Path stage2Path = fileSystem.getPath(STAGE2_RESOURCE);
-                if (!Files.exists(stage2Path)) return;
-                checkForNewerLoader(stage2Path);
-            }
-        } finally {
-            Files.delete(tmpStage1Jar);
-        }
-    }
-
-    private void checkForNewerLoader(Path stage2Jar) throws IOException {
-        String version = readStage2Version(stage2Jar);
-        if (version == null) return;
-
-        if (compareVersions(version, latestLoaderJarVersion) <= 0) {
-            return; // given jar isn't an upgrade, nothing to do
-        }
-
-        // Copy to temporary file, because we don't know how long the given path will remain valid for
-        Path copiedJar = Files.createTempFile("essential-loader-stage2-", ".jar");
-        copiedJar.toFile().deleteOnExit();
-        Files.copy(stage2Jar, copiedJar, REPLACE_EXISTING);
-
-        newerLoaderJar = copiedJar;
-        latestLoaderJarVersion = version;
-    }
-
-    private static int readStage1Version(Path path) {
-        String str = readImplementationVersion(path, STAGE1_PKG_PATH);
-        if (str == null) return -1;
-        try {
-            return Integer.parseInt(str);
-        } catch (Exception e) {
-            LOGGER.error("Failed to parse version from " + path, e);
-            return -1;
-        }
-    }
-
-    private static String readStage2Version(Path path) {
-        return readImplementationVersion(path, STAGE2_PKG_PATH);
-    }
-
-    private static String readImplementationVersion(Path jar, String name) {
-        try (InputStream rawIn = Files.newInputStream(jar);
-             JarInputStream in = new JarInputStream(rawIn, false)) {
-            Manifest manifest = in.getManifest();
-            if (manifest == null) {
-                return null;
-            }
-            Attributes attributes = manifest.getMainAttributes();
-            if (!name.equals(attributes.getValue("Name"))) {
-                return null;
-            }
-            return attributes.getValue("Implementation-Version");
-        } catch (Exception e) {
-            LOGGER.error("Failed to read implementation version from " + jar, e);
-            return null;
         }
     }
 
