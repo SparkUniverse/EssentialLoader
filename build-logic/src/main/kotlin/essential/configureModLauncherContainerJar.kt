@@ -19,6 +19,8 @@ fun ShadowJar.configureModLauncherContainerJar(configuration: Configuration) {
     relocate("gg.essential.loader.stage0.EssentialTransformationService", "gg.essential.container.loader.stage0.EssentialTransformationService")
     relocate("gg.essential.loader.stage0.EssentialTransformationServiceBase", "gg.essential.container.loader.stage0.EssentialTransformationServiceBase")
     relocate("gg.essential.loader.stage0.util", "gg.essential.container.loader.stage0.util")
+    // FML10
+    relocate("gg.essential.loader.stage0.EssentialModLocator", "gg.essential.container.loader.stage0.EssentialModLocator")
 
     // required for service files to be relocated
     mergeServiceFiles()

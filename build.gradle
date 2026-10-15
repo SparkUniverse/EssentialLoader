@@ -19,6 +19,7 @@ subprojects {
             "neoforge4": 21,
             "modlauncher10": 17,
             "modlauncher11": 21,
+            "fml10": 21,
     ]
     java.toolchain.languageVersion.set(JavaLanguageVersion.of(javaVersions.getOrDefault(project.name, 8)))
 }

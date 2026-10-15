@@ -4,7 +4,14 @@ configure(subprojects) {
     version = parent.version
 }
 
-configure(subprojects.findAll { it.name in ["fabric", "launchwrapper", "modlauncher8", "modlauncher9"] }) {
+var variants = [
+    "fabric",
+    "launchwrapper",
+    "modlauncher8",
+    "modlauncher9",
+    "fml10",
+]
+configure(subprojects.findAll { it.name in variants }) {
     configurations {
         bundle
     }
