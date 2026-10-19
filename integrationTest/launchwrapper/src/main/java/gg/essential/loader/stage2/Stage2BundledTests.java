@@ -116,7 +116,8 @@ public class Stage2BundledTests {
     public void testBundledVersionUpgradeWithoutOverride(Installation installation) throws Exception {
         installation.addExampleMod("bundled-1");
         // Skip online update, we want to test local bundle update
-        writeProps(installation.stage2ConfigFile, props("pendingUpdateVersion=stable", "pendingUpdateResolution=false"));
+        Files.copy(withBranch(installation.stage3Meta, "3"), installation.stage3Meta, REPLACE_EXISTING);
+        writeProps(installation.stage2ConfigFile, props("pendingUpdateVersion=3", "pendingUpdateResolution=false"));
 
         IsolatedLaunch firstLaunch = installation.launchFML();
         assertEquals("1", firstLaunch.getProperty("essential.version"));
@@ -126,7 +127,7 @@ public class Stage2BundledTests {
 
         IsolatedLaunch secondLaunch = installation.launchFML();
         assertEquals("2", secondLaunch.getProperty("essential.version"));
-        assertEquals(props("pendingUpdateVersion=stable", "pendingUpdateResolution=false"), readProps(installation.stage2ConfigFile));
+        assertEquals(props("pendingUpdateVersion=3", "pendingUpdateResolution=false"), readProps(installation.stage2ConfigFile));
     }
 
     @Test
