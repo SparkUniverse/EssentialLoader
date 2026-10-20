@@ -267,11 +267,33 @@ public class KFFMerger {
                 // Forge 1.20.4 SecureJars aren't wrapped in the "union" file system.
                 // Their URLs take the form jar:file:/some/path/to/archive.jar!/
                 url = new URL(url.getPath().substring(0, url.getPath().length() - 2));
+                // Forge 26.1 uses a new custom `roimfs` ("Read-only in-memory file system") for nested jars.
+                // Their URLs take the form jar:roimfs:jar-jar-1/kotlin-stdlib-2.4.0.jar!/
+                // We've stripped the outer `jar` above, so we can detect them by their `roimfs` protocol.
+                if (url.getProtocol().equals("roimfs")) {
+                    // Their `roimfs` implementation is incompatible with URLClassPath, so we need to create a temporary
+                    // real-file copy to use instead.
+                    Path copy = Files.createTempFile(null, ".jar");
+                    try {
+                        Files.copy(Path.of(url.toURI()), copy, StandardCopyOption.REPLACE_EXISTING);
+                        return detectKotlinCoreVersion(copy.toUri().toURL());
+                    } finally {
+                        Files.deleteIfExists(copy);
+                    }
+                }
             } else {
                 // Otherwise, assume it's a union jar and use the installed protocol handler to read it
                 url = new URL(url.getProtocol(), url.getHost(), url.getFile() + "/");
             }
-            URLClassLoader classLoader = new URLClassLoader(new URL[]{url});
+            return detectKotlinCoreVersion(url);
+        } catch (Throwable t) {
+            LOGGER.error("Failed to determine Kotlin Core version in " + jar + ":", t);
+            return 0;
+        }
+    }
+
+    private int detectKotlinCoreVersion(URL url) throws Throwable {
+        try (URLClassLoader classLoader = new URLClassLoader(new URL[]{url})) {
             Class<?> kotlinVersionClass = classLoader.loadClass("kotlin.KotlinVersion");
             Field currentField = kotlinVersionClass.getDeclaredField("CURRENT");
             Object kotlinVersion = currentField.get(null);
@@ -279,9 +301,6 @@ public class KFFMerger {
             int minor = (int) kotlinVersionClass.getDeclaredMethod("getMinor").invoke(kotlinVersion);
             int patch = (int) kotlinVersionClass.getDeclaredMethod("getPatch").invoke(kotlinVersion);
             return version(major, minor, patch);
-        } catch (Throwable t) {
-            LOGGER.error("Failed to determine Kotlin Core version in " + jar + ":", t);
-            return 0;
         }
     }
 
