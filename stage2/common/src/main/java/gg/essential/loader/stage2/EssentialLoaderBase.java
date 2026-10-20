@@ -367,6 +367,15 @@ public abstract class EssentialLoaderBase {
                     mod.config.remove(PENDING_UPDATE_RESOLUTION_KEY);
                     mod.writeConfigFile();
                 }
+            } else {
+                // Discard stale pending updates. This can happen when an update was pending but then the user installed
+                // it by updating to a newer pinned jar via some external process (e.g. their launcher).
+                if (mod.config.getProperty(PENDING_UPDATE_VERSION_KEY) != null
+                    || mod.config.getProperty(PENDING_UPDATE_RESOLUTION_KEY) != null) {
+                    mod.config.remove(PENDING_UPDATE_VERSION_KEY);
+                    mod.config.remove(PENDING_UPDATE_RESOLUTION_KEY);
+                    mod.writeConfigFile();
+                }
             }
         }
 

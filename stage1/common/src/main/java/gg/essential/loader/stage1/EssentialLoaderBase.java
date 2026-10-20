@@ -255,6 +255,15 @@ public abstract class EssentialLoaderBase {
                     config.remove(PENDING_UPDATE_RESOLUTION_KEY);
                     writeProperties(configFile, config);
                 }
+            } else {
+                // Discard stale pending updates. This can happen when an update was pending but then the user installed
+                // it by updating to a newer pinned jar via some external process (e.g. their launcher).
+                if (config.getProperty(PENDING_UPDATE_VERSION_KEY) != null
+                    || config.getProperty(PENDING_UPDATE_RESOLUTION_KEY) != null) {
+                    config.remove(PENDING_UPDATE_VERSION_KEY);
+                    config.remove(PENDING_UPDATE_RESOLUTION_KEY);
+                    writeProperties(configFile, config);
+                }
             }
         }
 
