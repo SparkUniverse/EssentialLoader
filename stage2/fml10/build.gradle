@@ -1,0 +1,15 @@
+dependencies {
+    compileOnly("net.neoforged.fancymodloader:loader:10.0.32")
+
+    compileOnly("org.apache.logging.log4j:log4j-api:2.0.0")
+    compileOnly("org.jetbrains:annotations:23.0.0")
+}
+
+jar {
+    def version = provider { project.version }
+    inputs.property("project.version", version)
+    manifest {
+        attributes("Name": "gg/essential/loader/stage2/")
+        attributes("Implementation-Version": version)
+    }
+}

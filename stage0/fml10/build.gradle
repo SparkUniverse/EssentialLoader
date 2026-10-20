@@ -1,0 +1,3 @@
+dependencies {
+    compileOnly("net.neoforged.fancymodloader:loader:10.0.32")
+}
