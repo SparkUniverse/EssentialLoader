@@ -22,7 +22,7 @@ public class EssentialTransformationService extends EssentialTransformationServi
     // the first one we support (stage2 will be the same for all MC versions on the same stage1 anyway) and once we are
     // in stage2, we can re-query at a later point as needed (but we always retain the ability to run an up-to-date
     // stage2 as early as possible).
-    private static final String MC_VERSION = "1.17.1";
+    protected static final String MC_VERSION = "1.17.1";
 
     public EssentialTransformationService(final ITransformationService stage0) throws Exception {
         super(stage0, FallbackTransformationService::new, "modlauncher9", MC_VERSION);

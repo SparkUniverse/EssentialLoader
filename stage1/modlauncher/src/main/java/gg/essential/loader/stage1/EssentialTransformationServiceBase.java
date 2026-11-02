@@ -18,7 +18,7 @@ import java.util.function.Function;
 import java.util.stream.Collectors;
 
 public abstract class EssentialTransformationServiceBase extends DelegatingTransformationServiceBase {
-    private static final String KEY_LOADED = "gg.essential.loader.stage1.loaded";
+    protected static final String KEY_LOADED = "gg.essential.loader.stage1.loaded";
 
     public EssentialTransformationServiceBase(
         final ITransformationService stage0,

@@ -4,4 +4,7 @@ dependencies {
     compileOnly("cpw.mods:securejarhandler:0.9.50")
     compileOnly("net.sf.jopt-simple:jopt-simple:5.0.4")
     compileOnly("org.jetbrains:annotations:21.0.1")
+    // as of forge 37.1 for MC 1.17.1, mixin is shipped with forge
+    // https://github.com/MinecraftForge/MinecraftForge/commit/c8d3ad1d1c977513b75e6aa3dd81c6ed9463bcae
+    compileOnly("org.spongepowered:mixin:0.8.5")
 }
