@@ -15,6 +15,7 @@ import java.nio.file.FileSystem;
 import java.nio.file.FileSystems;
 import java.nio.file.Files;
 import java.nio.file.Path;
+import java.nio.file.Paths;
 import java.nio.file.StandardCopyOption;
 import java.util.ArrayList;
 import java.util.Collections;
@@ -283,7 +284,7 @@ public class JarInJarDependenciesHandler {
 
     private void updateSyntheticMod() throws IOException {
         FabricLoader fabricLoader = FabricLoader.getInstance();
-        Path modsFolder = fabricLoader.getGameDir().resolve("mods").toRealPath();
+        Path modsFolder = getModsFolder(fabricLoader).toRealPath();
         Path syntheticModPath = modsFolder.resolve(SYNTHETIC_MOD_FILE_NAME);
         LOGGER.debug("Updating synthetic essential-dependencies mod at {}", syntheticModPath);
 
@@ -370,6 +371,11 @@ public class JarInJarDependenciesHandler {
         }
 
         LOGGER.debug("Synthetic essential-dependencies jar updated.");
+    }
+
+    private static Path getModsFolder(FabricLoader fabricLoader) {
+        String modsFolder = System.getProperty("fabric.modsFolder");
+        return modsFolder != null ? Paths.get(modsFolder) : fabricLoader.getGameDir().resolve("mods");
     }
 
     private static void createEmptyJar(Path path) throws IOException {
